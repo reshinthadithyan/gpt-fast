@@ -27,7 +27,7 @@ class ModelArgs:
     dim: int = 4096
     norm_bias: bool = False
     intermediate_size: int = None
-    qkv_bias: bool = False
+    proj_bias: bool = False
     n_local_heads: int = -1
     head_dim: int = 64
     rope_base: float = 10000
@@ -54,7 +54,7 @@ class ModelArgs:
 
 transformer_configs = {
     "CodeLlama-7b-Python-hf": dict(block_size=16384, vocab_size=32000, n_layer=32, dim = 4096, rope_base=1000000),
-    "stablelm-2-1_6b": dict(norm_bias=True,qkv_bias=True,norm_type="LayerNorm", n_layer=24, n_head=32, dim=2048, vocab_size=100352, intermediate_size=5632,rope_base=10000, block_size=4096),
+    "stablelm-2-1_6b": dict(norm_bias=True, proj_bias=True ,norm_type="LayerNorm", n_layer=24, n_head=32, dim=2048, vocab_size=100352, intermediate_size=5632,rope_base=10000, block_size=4096),
     "7B": dict(n_layer=32, n_head=32, dim=4096),
     "13B": dict(n_layer=40, n_head=40, dim=5120),
     "30B": dict(n_layer=60, n_head=52, dim=6656),
@@ -156,7 +156,7 @@ class Attention(nn.Module):
 
         total_head_dim = (config.n_head + 2 * config.n_local_heads) * config.head_dim
         # key, query, value projections for all heads, but in a batch
-        self.wqkv = nn.Linear(config.dim, total_head_dim, bias=config.qkv_bias)
+        self.wqkv = nn.Linear(config.dim, total_head_dim, bias=config.proj_bias)
         self.wo = nn.Linear(config.dim, config.dim, bias=False)
         self.kv_cache = None
 

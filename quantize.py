@@ -325,9 +325,16 @@ class WeightOnlyInt8QuantHandler:
         cur_state_dict = self.mod.state_dict()
         for fqn, mod in self.mod.named_modules():
             if isinstance(mod, torch.nn.Linear):
+                #Add bias term
                 int8_weight, scales, _ = dynamically_quantize_per_channel(mod.weight.float(), -128, 127, torch.int8)
+                if mod.bias is not None:
+                    print(mod.bias)
+                    int_8_bias, _, _ = dynamically_quantize_per_channel(mod.bias.float(), -128, 127, torch.int8)
+                    cur_state_dict[f"{fqn}.bias"] = int_8_bias
+
                 cur_state_dict[f"{fqn}.weight"] = int8_weight
                 cur_state_dict[f"{fqn}.scales"] = scales.to(mod.weight.dtype)
+
 
         return cur_state_dict
 

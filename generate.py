@@ -209,12 +209,16 @@ def generate(
 def encode_tokens(tokenizer, string, bos=True, device='cuda'):
     tokens = tokenizer.encode(string)
     if bos:
-        tokens = [tokenizer.bos_id()] + tokens
+        try:
+            tokens = [tokenizer.bos_id()] + tokens
+        except AttributeError:
+            tokens = [tokenizer.eos_token_id] + tokens
     return torch.tensor(tokens, dtype=torch.int, device=device)
 
 def _load_model(checkpoint_path, device, precision, use_tp):
     with torch.device('meta'):
         model = Transformer.from_name(checkpoint_path.parent.name)
+
 
     if "int8" in str(checkpoint_path):
         print("Using int8 weight-only quantization!")
@@ -232,6 +236,8 @@ def _load_model(checkpoint_path, device, precision, use_tp):
         model = simple_quantizer.convert_for_runtime()
 
     checkpoint = torch.load(str(checkpoint_path), mmap=True, weights_only=True)
+    # print("MODEL",model.state_dict()["layers.0.attention.wqkv.bias"])
+
     model.load_state_dict(checkpoint, assign=True)
 
     if use_tp:
@@ -263,8 +269,14 @@ def main(
     """
     assert checkpoint_path.is_file(), checkpoint_path
 
-    tokenizer_path = checkpoint_path.parent / "tokenizer.model"
-    assert tokenizer_path.is_file(), tokenizer_path
+    try:
+        tokenizer_path = checkpoint_path.parent / "tokenizer.model"
+        assert tokenizer_path.is_file(), tokenizer_path
+        tokenizer = SentencePieceProcessor(model_file=str(tokenizer_path))
+
+    except AssertionError:
+        from transformers import AutoTokenizer
+        tokenizer = AutoTokenizer.from_pretrained(checkpoint_path.parent, trust_remote_code=True)
 
     global print
     from tp import maybe_init_dist
@@ -292,8 +304,7 @@ def main(
     device_sync(device=device) # MKG
     print(f"Time to load model: {time.time() - t0:.02f} seconds")
 
-    tokenizer = SentencePieceProcessor(model_file=str(tokenizer_path))
-    encoded = encode_tokens(tokenizer, prompt, bos=True, device=device)
+    encoded = encode_tokens(tokenizer, prompt, bos=False, device=device)
     prompt_length = encoded.size(0)
 
     torch.manual_seed(1234)
