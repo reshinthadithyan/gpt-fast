@@ -31,6 +31,10 @@ def dynamically_quantize_per_channel(x, quant_min, quant_max, target_dtype):
     eps = torch.finfo(torch.float32).eps
 
     # get min and max
+    #expand x dims
+    init_dim_x = x.dim()
+    if init_dim_x == 1:
+        x = x.unsqueeze(0)
     min_val, max_val = torch.aminmax(x, dim=1)
 
     # calculate scales and zero_points based on min and max
@@ -53,6 +57,9 @@ def dynamically_quantize_per_channel(x, quant_min, quant_max, target_dtype):
     x_zp = x_round + zero_points.unsqueeze(-1)
     quant = torch.clamp(x_zp, quant_min, quant_max).to(target_dtype)
 
+    #resize back
+    if init_dim_x   == 1:
+        quant = quant.squeeze(0)
     return quant, scales, zero_points
 
 def get_group_qparams(w, n_bit=4, groupsize=128):
@@ -328,7 +335,6 @@ class WeightOnlyInt8QuantHandler:
                 #Add bias term
                 int8_weight, scales, _ = dynamically_quantize_per_channel(mod.weight.float(), -128, 127, torch.int8)
                 if mod.bias is not None:
-                    print(mod.bias)
                     int_8_bias, _, _ = dynamically_quantize_per_channel(mod.bias.float(), -128, 127, torch.int8)
                     cur_state_dict[f"{fqn}.bias"] = int_8_bias
 

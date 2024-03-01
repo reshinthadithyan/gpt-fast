@@ -109,11 +109,13 @@ def convert_hf_checkpoint(
             q_bias = final_result[key]
             k_bias = final_result[key.replace("wq", "wk")]
             v_bias = final_result[key.replace("wq", "wv")]
-            final_result[key.replace("wq", "wqkv")] = torch.cat([q_bias, k_bias, v_bias])
+            final_result[key.replace("wq", "wqkv")] = torch.cat(
+                [q_bias, k_bias, v_bias]
+                )
             del final_result[key]
             del final_result[key.replace("wq", "wk")]
             del final_result[key.replace("wq", "wv")]
-            
+
     print(f"Saving checkpoint to {checkpoint_dir / 'model.pth'}")
     torch.save(final_result, checkpoint_dir / "model.pth")
 

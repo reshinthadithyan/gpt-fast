@@ -208,11 +208,12 @@ def generate(
 
 def encode_tokens(tokenizer, string, bos=True, device='cuda'):
     tokens = tokenizer.encode(string)
+    print(tokens)
     if bos:
         try:
             tokens = [tokenizer.bos_id()] + tokens
         except AttributeError:
-            tokens = [tokenizer.eos_token_id] + tokens
+            tokens = tokens
     return torch.tensor(tokens, dtype=torch.int, device=device)
 
 def _load_model(checkpoint_path, device, precision, use_tp):
